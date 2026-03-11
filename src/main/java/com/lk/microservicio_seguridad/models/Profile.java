@@ -9,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document
 public class Profile {
     @Id
-    private String id;
+    private String _id;
     private String phone;
     private String photo;
 
@@ -20,8 +20,10 @@ public class Profile {
 
     }
 
-    public Profile( String phone, String photo) {
+    public Profile(String _id, String phone, String photo) {
+        this._id = _id;
         this.phone = phone;
         this.photo = photo;
+
     }
 }

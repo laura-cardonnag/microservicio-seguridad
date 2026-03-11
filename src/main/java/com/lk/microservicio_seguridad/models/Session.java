@@ -16,6 +16,7 @@ public class Session {
     private Date expiration;
     private String code2FA;
 
+    //Base no relacional
     @DBRef
     private User user;
 
