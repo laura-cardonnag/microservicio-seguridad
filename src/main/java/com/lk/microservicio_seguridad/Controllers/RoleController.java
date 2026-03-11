@@ -1,5 +1,6 @@
 package com.lk.microservicio_seguridad.Controllers;
 
+import com.lk.microservicio_seguridad.Repositories.RoleRepository;
 import com.lk.microservicio_seguridad.models.Role;
 import com.lk.microservicio_seguridad.Services.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ public class RoleController {
 
     @Autowired
     private RoleService theRoleService;
+    private RoleRepository theRoleRepository;
 
     @GetMapping("")
     public List<Role> find() {
