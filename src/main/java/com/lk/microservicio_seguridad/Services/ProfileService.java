@@ -1,4 +1,6 @@
 package com.lk.microservicio_seguridad.Services;
+import com.lk.microservicio_seguridad.Repositories.ProfileRepository;
+import com.lk.microservicio_seguridad.models.Profile;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.List;

@@ -1,5 +1,6 @@
 package com.lk.microservicio_seguridad.Repositories;
 
+import com.lk.microservicio_seguridad.models.UserRole;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 

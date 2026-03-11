@@ -1,5 +1,10 @@
 package com.lk.microservicio_seguridad.Services;
 
+import com.lk.microservicio_seguridad.Repositories.PermissionRepository;
+import com.lk.microservicio_seguridad.Repositories.RolePermissionRepository;
+import com.lk.microservicio_seguridad.Repositories.UserRepository;
+import com.lk.microservicio_seguridad.Repositories.UserRoleRepository;
+import com.lk.microservicio_seguridad.models.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
