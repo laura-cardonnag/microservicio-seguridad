@@ -1,6 +1,6 @@
 package com.lk.microservicio_seguridad.Controllers;
 
-
+import com.lk.microservicio_seguridad.models.User;
 import com.lk.microservicio_seguridad.Services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

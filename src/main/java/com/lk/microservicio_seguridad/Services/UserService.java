@@ -1,6 +1,11 @@
 package com.lk.microservicio_seguridad.Services;
 
-
+import com.lk.microservicio_seguridad.models.User;
+import com.lk.microservicio_seguridad.models.Profile;
+import com.lk.microservicio_seguridad.models.Session;
+import com.lk.microservicio_seguridad.Repositories.UserRepository;
+import com.lk.microservicio_seguridad.Repositories.ProfileRepository;
+import com.lk.microservicio_seguridad.Repositories.SessionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -10,11 +15,13 @@ import java.util.List;
 public class UserService {
 
     @Autowired
-
     private UserRepository theUserRepository;
 
     @Autowired
     private ProfileRepository theProfileRepository;
+
+    @Autowired
+    private SessionRepository theSessionRepository;
 
     public List<User> find(){
 

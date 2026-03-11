@@ -1,7 +1,6 @@
 package com.lk.microservicio_seguridad.Services;
 
-
-import com.lcg.ms_security.Models.User;
+import com.lk.microservicio_seguridad.models.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
@@ -43,14 +42,14 @@ public class JwtService {
     }
     public boolean validateToken(String token) {
         try {
-            Jws<Claims> claimsJws = Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
+            Jws<Claims> claimsJws = Jwts.parser()
+                    .verifyWith((javax.crypto.SecretKey) secretKey)
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
 
             // Verifica la expiración del token
             Date now = new Date();
-            if (claimsJws.getBody().getExpiration().before(now)) {
+            if (claimsJws.getPayload().getExpiration().before(now)) {
                 return false;
             }
 
@@ -66,12 +65,12 @@ public class JwtService {
 
     public User getUserFromToken(String token) {
         try {
-            Jws<Claims> claimsJws = Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
+            Jws<Claims> claimsJws = Jwts.parser()
+                    .verifyWith((javax.crypto.SecretKey) secretKey)
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
 
-            Claims claims = claimsJws.getBody();
+            Claims claims = claimsJws.getPayload();
 
             User user = new User();
             user.setId((String) claims.get("id"));

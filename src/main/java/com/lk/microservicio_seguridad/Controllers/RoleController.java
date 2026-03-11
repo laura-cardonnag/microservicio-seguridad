@@ -1,7 +1,6 @@
 package com.lk.microservicio_seguridad.Controllers;
 
-
-
+import com.lk.microservicio_seguridad.models.Role;
 import com.lk.microservicio_seguridad.Services.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

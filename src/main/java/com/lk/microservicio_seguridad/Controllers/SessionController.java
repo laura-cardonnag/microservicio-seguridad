@@ -1,6 +1,6 @@
 package com.lk.microservicio_seguridad.Controllers;
 
-
+import com.lk.microservicio_seguridad.models.Session;
 import com.lk.microservicio_seguridad.Services.SessionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

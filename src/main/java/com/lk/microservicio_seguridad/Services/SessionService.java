@@ -1,6 +1,7 @@
 package com.lk.microservicio_seguridad.Services;
 
-
+import com.lk.microservicio_seguridad.models.Session;
+import com.lk.microservicio_seguridad.Repositories.SessionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
