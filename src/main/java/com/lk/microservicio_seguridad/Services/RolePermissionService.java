@@ -1,5 +1,8 @@
 package com.lk.microservicio_seguridad.Services;
 
+import com.lk.microservicio_seguridad.Repositories.PermissionRepository;
+import com.lk.microservicio_seguridad.Repositories.RolePermissionRepository;
+import com.lk.microservicio_seguridad.Repositories.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 

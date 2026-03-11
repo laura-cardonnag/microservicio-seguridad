@@ -1,6 +1,5 @@
 package com.lk.microservicio_seguridad.models;
 
-package com.lcg.ms_security.Models;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
