@@ -1,11 +1,13 @@
 package com.lk.microservicio_seguridad.Controllers;
 
 import com.lk.microservicio_seguridad.Services.RolePermissionService;
+import com.lk.microservicio_seguridad.models.RolePermission;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @CrossOrigin
@@ -43,6 +45,12 @@ public class RolePermissionController {
                     .status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "RolePermission not found"));
         }
+    }
+
+    @GetMapping("/role/{roleId}")
+    public ResponseEntity<List<RolePermission>> getRolePermissions(@PathVariable String roleId) {
+        List<RolePermission> permissions = this.theRolePermissionService.getRolePermissionsByRoleId(roleId);
+        return ResponseEntity.ok(permissions);
     }
 }
 
