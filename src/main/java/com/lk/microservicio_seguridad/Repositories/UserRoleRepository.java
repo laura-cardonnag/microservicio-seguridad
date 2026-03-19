@@ -8,6 +8,10 @@ import java.util.List;
 
 public interface UserRoleRepository extends MongoRepository<UserRole, String> {
 
-    @Query("{ 'user.$id' : ObjectId(?0) }")
-    public List<UserRole> getRolesByUser(String userId);
+    // Opción 1: Query personalizada correcta
+    @Query("{ 'user._id' : ?0 }")
+    List<UserRole> findByUserId(String userId);
+
+    // Opción 2: Si MongoDB no reconoce, usa el método derivado
+    // List<UserRole> findByUserId(String userId);
 }

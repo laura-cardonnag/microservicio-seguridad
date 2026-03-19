@@ -1,11 +1,14 @@
 package com.lk.microservicio_seguridad.Controllers;
 
+import com.lk.microservicio_seguridad.Repositories.UserRoleRepository;
 import com.lk.microservicio_seguridad.Services.UserRoleService;
+import com.lk.microservicio_seguridad.models.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @CrossOrigin
@@ -14,6 +17,8 @@ import java.util.Map;
 public class UserRoleController {
     @Autowired
     private UserRoleService theUserRoleService;
+    @Autowired
+    private UserRoleRepository userRoleRepository;
 
     @PostMapping("user/{userId}/role/{roleId}")
     public ResponseEntity<Map<String, String>> addUserRole(
@@ -41,5 +46,10 @@ public class UserRoleController {
                     .status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "User or Role not found"));
         }
+    }
+
+    @GetMapping("/user/{userId}")
+    public List<UserRole> getRolesByUser(@PathVariable String userId) {
+        return userRoleRepository.findByUserId(userId);
     }
 }

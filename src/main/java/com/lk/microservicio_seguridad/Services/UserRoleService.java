@@ -9,6 +9,8 @@ import com.lk.microservicio_seguridad.models.UserRole;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class UserRoleService {
     @Autowired
@@ -41,5 +43,9 @@ public class UserRoleService {
         } else {
             return false;
         }
+    }
+
+    public List<UserRole> getRolesByUserId(String userId) {
+        return theUserRoleRepository.findByUserId(userId);
     }
 }
