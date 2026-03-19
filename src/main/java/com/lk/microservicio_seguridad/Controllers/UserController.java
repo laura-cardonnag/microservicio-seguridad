@@ -18,6 +18,9 @@ public class UserController {
     @Autowired
     private UserService theUserService;
 
+    @Autowired
+    private NotificationController notificationController;
+
     @GetMapping("")
     public List<User> find() {
         return this.theUserService.find();
@@ -30,7 +33,9 @@ public class UserController {
 
     @PostMapping
     public User create(@RequestBody User newUser) {
-        return this.theUserService.create(newUser);
+        User createdUser = this.theUserService.create(newUser);
+        notificationController.sendWelcomeEmail(createdUser);
+        return createdUser;
     }
 
     @PutMapping("{id}")

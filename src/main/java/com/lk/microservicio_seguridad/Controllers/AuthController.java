@@ -14,10 +14,12 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtService jwtService;
+    private final NotificationController notificationController;
 
-    public AuthController(AuthService authService, JwtService jwtService) {
+    public AuthController(AuthService authService, JwtService jwtService, NotificationController notificationController) {
         this.authService = authService;
         this.jwtService = jwtService;
+        this.notificationController = notificationController;
     }
 
     @PostMapping("/register")
@@ -27,6 +29,7 @@ public class AuthController {
         String password = request.get("password");
 
         User user = authService.register(name, email, password);
+        notificationController.sendWelcomeEmail(user);
         return ResponseEntity.ok(user);
     }
 
