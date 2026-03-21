@@ -88,4 +88,8 @@ public class RecaptchaService {
             logger.error("❌ Error reCAPTCHA - Codes: {}", response.getErrorCodes());
         }
     }
+
+    public double getMinScore() {
+        return recaptchaMinScore;
+    }
 }
