@@ -1,5 +1,6 @@
 package com.lk.microservicio_seguridad.Configurations;
 
+import com.lk.microservicio_seguridad.Exceptions.RecaptchaValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -11,6 +12,14 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(RecaptchaValidationException.class)
+    public ResponseEntity<Map<String, String>> handleRecaptchaValidationException(RecaptchaValidationException ex, WebRequest request) {
+        Map<String, String> errorDetails = new HashMap<>();
+        errorDetails.put("message", ex.getMessage());
+        errorDetails.put("error", "reCAPTCHA Validation Failed");
+        return new ResponseEntity<>(errorDetails, HttpStatus.FORBIDDEN);
+    }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntimeException(RuntimeException ex, WebRequest request) {
