@@ -46,7 +46,10 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest request) {
-        logger.info("Intento de login para: {}", request.getEmail());
+        logger.info("Request recibido: email={}, password={}, recaptchaToken={}", 
+                    request.getEmail(), 
+                    request.getPassword() != null ? "presente" : "null", 
+                    request.getRecaptchaToken() != null ? "presente" : "null");
 
         // Validar que los campos requeridos no sean nulos
         if (request.getEmail() == null || request.getEmail().isEmpty() ||
@@ -54,7 +57,10 @@ public class AuthController {
             throw new IllegalArgumentException("Email y contraseña son requeridos");
         }
 
-        // Validar el token de reCAPTCHA
+        logger.info("Campos validados, procediendo con login");
+
+        // TEMPORALMENTE DESHABILITADO PARA PRUEBAS: Validar el token de reCAPTCHA
+
         if (request.getRecaptchaToken() == null || request.getRecaptchaToken().isEmpty()) {
             logger.warn("Intento de login sin token de reCAPTCHA: {}", request.getEmail());
             throw new RecaptchaValidationException("Token de reCAPTCHA es requerido");
@@ -87,11 +93,21 @@ public class AuthController {
         logger.info("✓ reCAPTCHA validado exitosamente para: {} - Score: {}", 
                     request.getEmail(), recaptchaResponse.getScore());
 
-        // Si llegamos aquí, reCAPTCHA fue validado exitosamente, proceder con login normal
-        User user = authService.login(request.getEmail(), request.getPassword());
-        String token = jwtService.generateToken(user);
 
-        logger.info("Login exitoso para: {}", request.getEmail());
-        return ResponseEntity.ok(Map.of("token", token));
+        // Si llegamos aquí, reCAPTCHA fue validado exitosamente, proceder con login normal
+        logger.info("Procediendo con autenticación de usuario");
+        User user = authService.login(request.getEmail(), request.getPassword());
+        logger.info("Usuario autenticado exitosamente: {}", user.getEmail());
+
+        logger.info("Generando token JWT");
+        try {
+            String token = jwtService.generateToken(user);
+            System.out.println("TOKEN GENERADO: " + token);
+            logger.info("Login exitoso para: {}", request.getEmail());
+            return ResponseEntity.ok(Map.of("token", token));
+        } catch (Exception e) {
+            logger.error("Error generando token JWT para usuario: {}", user.getEmail(), e);
+            throw new RuntimeException("Error interno al procesar el login", e);
+        }
     }
 }

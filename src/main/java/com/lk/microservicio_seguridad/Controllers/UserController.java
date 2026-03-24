@@ -12,7 +12,7 @@ import java.util.Map;
 
 @CrossOrigin
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/private/users")
 public class UserController {
 
     @Autowired

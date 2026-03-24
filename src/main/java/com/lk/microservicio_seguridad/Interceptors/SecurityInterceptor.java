@@ -3,37 +3,52 @@ package com.lk.microservicio_seguridad.Interceptors;
 import com.lk.microservicio_seguridad.Services.ValidatorsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
 
 @Component
 public class SecurityInterceptor implements HandlerInterceptor {
+
+    private static final Logger logger = LoggerFactory.getLogger(SecurityInterceptor.class);
+
     @Autowired
-    //validatorService es la inyección
     private ValidatorsService validatorService;
+
     @Override
-    //Importante request (va a un proceso de validación delegado al validatorService) que entra y la response que sale
     public boolean preHandle(HttpServletRequest request,
                              HttpServletResponse response,
-                             Object handler)
-            throws Exception {
-        //True lo deja pasar, false no
-        boolean success=this.validatorService.validationRolePermission(request,request.getRequestURI(),request.getMethod());
-        return success;
-    }
+                             Object handler) throws Exception {
 
-    @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
-                           ModelAndView modelAndView) throws Exception {
-        // Lógica a ejecutar después de que se haya manejado la solicitud por el controlador
-    }
+        logger.info("SecurityInterceptor ejecutándose para: {}", request.getRequestURI());
 
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler,
-                                Exception ex) throws Exception {
-        // Lógica a ejecutar después de completar la solicitud, incluso después de la renderización de la vista
-    }
-}
+        // 🔥 SOLUCIÓN CLAVE
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            logger.info("Petición OPTIONS permitida (CORS preflight)");
+            response.setStatus(HttpServletResponse.SC_OK);
+            return true;
+        }
 
+        try {
+            boolean hasAccess = validatorService.validationRolePermission(
+                    request,
+                    request.getRequestURI(),
+                    request.getMethod()
+            );
+
+            if (!hasAccess) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.getWriter().write("Acceso denegado");
+                return false;
+            }
+
+            return true;
+
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Sesión expirada o inválida");
+            return false;
+        }
+    }}

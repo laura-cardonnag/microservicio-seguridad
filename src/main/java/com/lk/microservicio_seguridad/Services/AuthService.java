@@ -2,12 +2,16 @@ package com.lk.microservicio_seguridad.Services;
 
 import com.lk.microservicio_seguridad.Repositories.UserRepository;
 import com.lk.microservicio_seguridad.models.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
 @Service
 public class AuthService {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository userRepository;
     private final EncryptionService encryptionService;
@@ -32,15 +36,24 @@ public class AuthService {
     }
 
     public User login(String email, String password) {
+        logger.info("Intentando login para email: {}", email);
+
         User user = userRepository.getUserByEmail(email);
         if (user == null) {
+            logger.warn("Usuario no encontrado para email: {}", email);
             throw new IllegalArgumentException("Email o contraseña incorrectos");
         }
 
+        logger.info("Usuario encontrado: {}", user.getEmail());
+
         String hashedPassword = encryptionService.convertSHA256(password);
         if (!hashedPassword.equals(user.getPassword())) {
+            logger.warn("Contraseña incorrecta para email: {}", email);
             throw new IllegalArgumentException("Email o contraseña incorrectos");
         }
+
+        logger.info("Contraseña correcta para: {}", email);
+        logger.info("Login exitoso para: {}", email);
 
         return user;
     }

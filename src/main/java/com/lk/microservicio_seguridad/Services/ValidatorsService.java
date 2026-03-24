@@ -26,37 +26,30 @@ public class ValidatorsService {
     @Autowired
     private UserRoleRepository theUserRoleRepository;
     private static final String BEARER_PREFIX = "Bearer ";
+
     //Recibe request, url y método, se harán los cruces
-    public boolean  validationRolePermission(HttpServletRequest request,
-                                             String url,
-                                             String method){
-        boolean success=false;
-        User theUser=this.getUser(request);
-        if(theUser!=null){
-            System.out.println("Antes URL "+url+" metodo "+method);
-            url = url.replaceAll("[0-9a-fA-F]{24}|\\d+", "?");
-            System.out.println("URL "+url+" metodo "+method);
-            Permission thePermission=this.thePermissionRepository.getPermission(url,method);
+    public boolean validationRolePermission(HttpServletRequest request,
+                                            String url,
+                                            String method) {
 
-            List<UserRole> roles=this.theUserRoleRepository.findByUserId(theUser.getId());
-            int i=0;
-            while(i<roles.size() && success==false){
-                UserRole actual=roles.get(i);
-                Role theRole=actual.getRole();
-                if(theRole!=null && thePermission!=null){
-                    System.out.println("Rol "+theRole.getId()+ " Permission "+thePermission.getId());
-                    RolePermission theRolePermission=this.theRolePermissionRepository.getRolePermission(theRole.getId(),thePermission.getId());
-                    if (theRolePermission!=null){
-                        success=true;
-                    }
-                }else{
-                    success=false;
+        User theUser = this.getUser(request); // 🔴 ahora lanza excepción si falla
+        boolean success = false;
+        url = url.replaceAll("[0-9a-fA-F]{24}|\\d+", "?");
+        Permission thePermission = this.thePermissionRepository.getPermission(url, method);
+        List<UserRole> roles = this.theUserRoleRepository.findByUserId(theUser.getId());
+        for (UserRole actual : roles) {
+            Role theRole = actual.getRole();
+
+            if (theRole != null && thePermission != null) {
+                RolePermission rp = this.theRolePermissionRepository
+                        .getRolePermission(theRole.getId(), thePermission.getId());
+
+                if (rp != null) {
+                    return true;
                 }
-                i+=1;
             }
-
         }
-        return success;
+        return false; // 🔴 aquí sí es 403
     }
     /*
     Analiza el token y decifra los datos para re armar el usuario
@@ -65,20 +58,22 @@ public class ValidatorsService {
     */
 
     public User getUser(final HttpServletRequest request) {
-        User theUser=null;
         String authorizationHeader = request.getHeader("Authorization");
-        System.out.println("Header "+authorizationHeader);
-        if (authorizationHeader != null && authorizationHeader.startsWith(BEARER_PREFIX)) {
-            String token = authorizationHeader.substring(BEARER_PREFIX.length());
-            System.out.println("Bearer Token: " + token);
-            User theUserFromToken=jwtService.getUserFromToken(token);
-            if(theUserFromToken!=null) {
-                theUser= this.theUserRepository.findById(theUserFromToken.getId())
-                        .orElse(null);
 
-            }
+        if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
+            throw new RuntimeException("Token faltante");
         }
-        return theUser;
+
+        String token = authorizationHeader.substring(BEARER_PREFIX.length());
+
+        User theUserFromToken = jwtService.getUserFromToken(token);
+
+        if (theUserFromToken == null) {
+            throw new RuntimeException("Token inválido");
+        }
+
+        return this.theUserRepository.findById(theUserFromToken.getId())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
     }
 }
 

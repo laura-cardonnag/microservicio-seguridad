@@ -11,7 +11,7 @@ import java.util.HashMap;
 
 @CrossOrigin
 @RestController
-@RequestMapping("/security")
+@RequestMapping("/api/private/security")
 public class SecurityController {
 
     @Autowired
@@ -32,6 +32,3 @@ public class SecurityController {
         return theResponse;
     }
 }
-
-
-

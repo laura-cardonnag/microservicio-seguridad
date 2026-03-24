@@ -1,12 +1,13 @@
 package com.lk.microservicio_seguridad.Services;
 
+import com.lk.microservicio_seguridad.Repositories.UserRoleRepository;
 import com.lk.microservicio_seguridad.models.User;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.SignatureException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -17,71 +18,104 @@ import java.util.Map;
 
 @Service
 public class JwtService {
+    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
     @Value("${jwt.secret}")
-    private String secret; // Esta es la clave secreta que se utiliza para firmar el token. Debe mantenerse segura.
+    private String secret;
 
     @Value("${jwt.expiration}")
-    private Long expiration; // Tiempo de expiración del token en milisegundos.
-    private Key secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+    private Long expiration;
 
-    public String generateToken(User theUser) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("id", theUser.getId());
-        claims.put("name", theUser.getName());
-        claims.put("email", theUser.getEmail());
-
-        return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(theUser.getName())
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .signWith(secretKey)
-                .compact();
+    /**
+     * 🔐 Genera la clave segura a partir del secret
+     */
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(secret.getBytes());
     }
+
+    /**
+     * 🔑 Genera el token JWT con información del usuario
+     */
+    public String generateToken(User theUser) {
+        try {
+            logger.info("Generando token JWT para usuario: {}", theUser.getEmail());
+
+            Date now = new Date();
+            Date expiryDate = new Date(now.getTime() + expiration);
+
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("id", theUser.getId());
+            claims.put("name", theUser.getName());
+            claims.put("email", theUser.getEmail());
+
+            // 🔥 IMPORTANTE: incluir rol en el token
+            String roleName = "";
+
+            logger.info("Buscando roles para userId: {}", theUser.getId());
+            var roles = userRoleRepository.findByUserId(theUser.getId());
+            logger.info("Roles encontrados: {}", roles.size());
+
+            if (!roles.isEmpty() && roles.get(0).getRole() != null) {
+                roleName = roles.get(0).getRole().getName(); // toma el primer rol
+            }
+
+            claims.put("role", roleName);
+            String token = Jwts.builder()
+                    .setClaims(claims)
+                    .setSubject(theUser.getName())
+                    .setIssuedAt(now)
+                    .setExpiration(expiryDate)
+                    .signWith(getSigningKey())
+                    .compact();
+
+            logger.info("Token JWT generado exitosamente para: {}", theUser.getEmail());
+            return token;
+        } catch (Exception e) {
+            logger.error("Error generando token JWT para usuario: {}", theUser.getEmail(), e);
+            throw new RuntimeException("Error interno al generar token", e);
+        }
+    }
+
+    /**
+     * ✅ Valida el token (firma + expiración)
+     */
     public boolean validateToken(String token) {
         try {
-            Jws<Claims> claimsJws = Jwts.parser()
-                    .verifyWith((javax.crypto.SecretKey) secretKey)
+            Jwts.parser()
+                    .verifyWith((javax.crypto.SecretKey) getSigningKey())
                     .build()
                     .parseSignedClaims(token);
 
-            // Verifica la expiración del token
-            Date now = new Date();
-            if (claimsJws.getPayload().getExpiration().before(now)) {
-                return false;
-            }
-
             return true;
-        } catch (SignatureException ex) {
-            // La firma del token es inválida
-            return false;
+
         } catch (Exception e) {
-            // Otra excepción
             return false;
         }
     }
 
+    /**
+     * 👤 Extrae el usuario desde el token
+     */
     public User getUserFromToken(String token) {
         try {
-            Jws<Claims> claimsJws = Jwts.parser()
-                    .verifyWith((javax.crypto.SecretKey) secretKey)
+            Claims claims = Jwts.parser()
+                    .verifyWith((javax.crypto.SecretKey) getSigningKey())
                     .build()
-                    .parseSignedClaims(token);
-
-            Claims claims = claimsJws.getPayload();
+                    .parseSignedClaims(token)
+                    .getPayload();
 
             User user = new User();
             user.setId((String) claims.get("id"));
             user.setName((String) claims.get("name"));
             user.setEmail((String) claims.get("email"));
+
             return user;
+
         } catch (Exception e) {
-            // En caso de que el token sea inválido o haya expirado
             return null;
         }
     }
-
-
 }

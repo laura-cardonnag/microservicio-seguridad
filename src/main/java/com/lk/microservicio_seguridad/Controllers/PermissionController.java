@@ -1,4 +1,3 @@
-
 package com.lk.microservicio_seguridad.Controllers;
 
 import com.lk.microservicio_seguridad.models.Permission;
@@ -10,7 +9,7 @@ import java.util.List;
 
 @CrossOrigin
 @RestController
-@RequestMapping("/permissions")
+@RequestMapping("/api/private/permissions")
 public class PermissionController {
 
     @Autowired
