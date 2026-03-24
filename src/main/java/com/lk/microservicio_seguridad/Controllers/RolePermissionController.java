@@ -12,13 +12,13 @@ import java.util.Map;
 
 @CrossOrigin
 @RestController
-@RequestMapping("")
+@RequestMapping("/api/private/role-permission")
 public class RolePermissionController {
 
     @Autowired
     private RolePermissionService theRolePermissionService;
 
-    @PostMapping("role/{roleId}/permission/{permissionId}")
+    @PostMapping("/role/{roleId}/permission/{permissionId}")
     public ResponseEntity<Map<String, String>> addRolePermission(
             @PathVariable String roleId,
             @PathVariable String permissionId) {
@@ -33,7 +33,7 @@ public class RolePermissionController {
         }
     }
 
-    @DeleteMapping("{rolePermissionId}")
+    @DeleteMapping("/{rolePermissionId}")
     public ResponseEntity<Map<String, String>> removeRolePermission(
             @PathVariable String rolePermissionId) {
 
@@ -51,5 +51,17 @@ public class RolePermissionController {
     public ResponseEntity<List<RolePermission>> getRolePermissions(@PathVariable String roleId) {
         List<RolePermission> permissions = this.theRolePermissionService.getRolePermissionsByRoleId(roleId);
         return ResponseEntity.ok(permissions);
+    }
+
+    @GetMapping("/role/{roleId}/permission/{permissionId}")
+    public ResponseEntity<RolePermission> getRolePermission(
+            @PathVariable String roleId,
+            @PathVariable String permissionId) {
+        RolePermission rolePermission = this.theRolePermissionService.getRolePermission(roleId, permissionId);
+        if (rolePermission != null) {
+            return ResponseEntity.ok(rolePermission);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 }

@@ -50,5 +50,15 @@ public class RolePermissionService {
     public List<RolePermission> getRolePermissionsByRoleId(String roleId) {
         return this.theRolePermissionRepository.getPermissionsByRole(roleId);
     }
+
+    public RolePermission getRolePermission(String roleId, String permissionId) {
+        List<RolePermission> rolePermissions = this.theRolePermissionRepository.getPermissionsByRole(roleId);
+        for (RolePermission rp : rolePermissions) {
+            if (rp.getPermission().getId().equals(permissionId)) {
+                return rp;
+            }
+        }
+        return null;
+    }
 }
 

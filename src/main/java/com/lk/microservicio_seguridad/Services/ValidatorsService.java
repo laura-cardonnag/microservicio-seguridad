@@ -34,7 +34,8 @@ public class ValidatorsService {
 
         User theUser = this.getUser(request); // 🔴 ahora lanza excepción si falla
         boolean success = false;
-        url = url.replaceAll("[0-9a-fA-F]{24}|\\d+", "?");
+        // Normalizar la URL reemplazando: parámetros dinámicos {}, UUIDs, IDs MongoDB y números
+        url = url.replaceAll("\\{[^}]+\\}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{24}|\\d+", "?");
         Permission thePermission = this.thePermissionRepository.getPermission(url, method);
         List<UserRole> roles = this.theUserRoleRepository.findByUserId(theUser.getId());
         for (UserRole actual : roles) {
