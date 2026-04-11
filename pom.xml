@@ -76,6 +76,11 @@
 		<groupId>com.google.code.gson</groupId>
 		<artifactId>gson</artifactId>
 	</dependency>
+	<!-- Spring Mail for email support -->
+	<dependency>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-mail</artifactId>
+	</dependency>
 	</dependencies>
 
 	<build>

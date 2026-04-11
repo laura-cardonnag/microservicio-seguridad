@@ -2,6 +2,10 @@ package com.lk.microservicio_seguridad.Controllers;
 
 import com.lk.microservicio_seguridad.Exceptions.RecaptchaValidationException;
 import com.lk.microservicio_seguridad.models.LoginRequest;
+import com.lk.microservicio_seguridad.models.OAuthLoginRequest;
+import com.lk.microservicio_seguridad.models.OAuthLoginResponse;
+import com.lk.microservicio_seguridad.models.ForgotPasswordRequest;
+import com.lk.microservicio_seguridad.models.ResetPasswordRequest;
 import com.lk.microservicio_seguridad.models.RecaptchaResponse;
 import com.lk.microservicio_seguridad.models.User;
 import com.lk.microservicio_seguridad.Services.AuthService;
@@ -108,6 +112,151 @@ public class AuthController {
         } catch (Exception e) {
             logger.error("Error generando token JWT para usuario: {}", user.getEmail(), e);
             throw new RuntimeException("Error interno al procesar el login", e);
+        }
+    }
+
+    @PostMapping("/oauth-login")
+    public ResponseEntity<?> oauthLogin(@RequestBody OAuthLoginRequest request) {
+        logger.info("🔐 OAuth login request recibido");
+        logger.info("📧 Email: {}, Name: {}, Provider: {}", 
+                    request.getEmail(), request.getName(), request.getProvider());
+
+        try {
+            // Validar que los campos requeridos no sean nulos
+            if (request.getEmail() == null || request.getEmail().isEmpty()) {
+                logger.warn("❌ Email es requerido para OAuth login");
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Email es requerido"));
+            }
+
+            if (request.getName() == null || request.getName().isEmpty()) {
+                logger.warn("❌ Name es requerido para OAuth login");
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Name es requerido"));
+            }
+
+            if (request.getProvider() == null || request.getProvider().isEmpty()) {
+                logger.warn("❌ Provider es requerido para OAuth login");
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Provider es requerido"));
+            }
+
+            logger.info("✅ Campos validados correctamente");
+
+            // Procesar OAuth login
+            User user = authService.oauthLogin(request.getEmail(), request.getName(), request.getProvider());
+            logger.info("✨ Usuario procesado: {} (ID: {})", user.getEmail(), user.getId());
+
+            // Generar JWT token
+            logger.info("🔐 Generando JWT token para usuario: {}", user.getEmail());
+            String token = jwtService.generateToken(user);
+            logger.info("✅ JWT token generado exitosamente");
+
+            // Crear respuesta con token y información del usuario
+            OAuthLoginResponse response = new OAuthLoginResponse(
+                    token,
+                    user.getId(),
+                    user.getEmail(),
+                    user.getName(),
+                    request.getPhotoUrl() // Solo retornar el photoUrl del request, no de BD
+            );
+
+            logger.info("✨ OAuth login exitoso para: {} (Provider: {})", 
+                        request.getEmail(), request.getProvider());
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("❌ Error en OAuth login: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error interno al procesar OAuth login",
+                                 "details", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        try {
+            // Validar campos requeridos
+            if (request.getEmail() == null || request.getEmail().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Email es requerido"));
+            }
+            
+            if (request.getRecaptchaToken() == null || request.getRecaptchaToken().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "reCAPTCHA token es requerido"));
+            }
+            
+            // Validar reCAPTCHA
+            RecaptchaResponse recaptchaResponse = recaptchaService.validateToken(
+                request.getRecaptchaToken(), 
+                "forgot_password"
+            );
+            
+            if (!recaptchaResponse.isSuccess()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "reCAPTCHA inválido. Por favor, intenta de nuevo."));
+            }
+            
+            // Iniciar proceso de reset
+            authService.initiatePasswordReset(request.getEmail());
+            
+            // RESPUESTA GENÉRICA (por seguridad, siempre igual)
+            return ResponseEntity.ok(Map.of(
+                "message", "Si el email existe en nuestros registros, recibirá instrucciones de recuperación en su bandeja de entrada."
+            ));
+            
+        } catch (Exception e) {
+            // Respuesta genérica incluso en caso de error (por seguridad)
+            return ResponseEntity.ok(Map.of(
+                "message", "Si el email existe en nuestros registros, recibirá instrucciones de recuperación en su bandeja de entrada."
+            ));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        logger.info("🔐 Solicitud de reset de contraseña recibida");
+        
+        try {
+            // Validar campos requeridos
+            if (request.getToken() == null || request.getToken().isEmpty()) {
+                logger.warn("❌ Token es requerido para reset-password");
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Token es requerido"));
+            }
+            
+            if (request.getNewPassword() == null || request.getNewPassword().isEmpty()) {
+                logger.warn("❌ Nueva contraseña es requerida");
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "Nueva contraseña es requerida"));
+            }
+            
+            if (request.getNewPassword().length() < 8) {
+                logger.warn("❌ Nueva contraseña muy corta");
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", "La contraseña debe tener al menos 8 caracteres"));
+            }
+            
+            logger.info("✅ Validaciones de entrada completadas");
+            
+            // Procesar reset de contraseña
+            authService.resetPassword(request.getToken(), request.getNewPassword());
+            
+            logger.info("✨ Reset de contraseña completado exitosamente");
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Contraseña restablecida exitosamente. Puede iniciar sesión con su nueva contraseña."
+            ));
+            
+        } catch (IllegalArgumentException e) {
+            logger.warn("⚠️ Error en reset-password: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            logger.error("❌ Error inesperado en reset-password: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error interno al procesar el reset de contraseña"));
         }
     }
 }
