@@ -39,9 +39,7 @@ public class RecaptchaService {
         }
 
         try {
-            // 🔥 DEBUG
-            logger.info("SECRET KEY USADA: {}", recaptchaSecretKey);
-            logger.info("TOKEN RECIBIDO: {}", token.substring(0, 20) + "...");
+            logger.info("TOKEN RECIBIDO: {}", tokenPreview(token));
 
             String requestBody = "secret=" + URLEncoder.encode(recaptchaSecretKey, StandardCharsets.UTF_8)
                     + "&response=" + URLEncoder.encode(token, StandardCharsets.UTF_8);
@@ -85,11 +83,20 @@ public class RecaptchaService {
                     response.getScore(),
                     response.getAction());
         } else {
-            logger.error("❌ Error reCAPTCHA - Codes: {}", response.getErrorCodes());
+            logger.warn("⚠️ reCAPTCHA rechazado - Codes: {}", response.getErrorCodes());
         }
     }
 
     public double getMinScore() {
         return recaptchaMinScore;
+    }
+
+    private String tokenPreview(String token) {
+        if (token == null || token.isEmpty()) {
+            return "<vacio>";
+        }
+        int previewLength = Math.min(20, token.length());
+        String suffix = token.length() > previewLength ? "..." : "";
+        return token.substring(0, previewLength) + suffix;
     }
 }

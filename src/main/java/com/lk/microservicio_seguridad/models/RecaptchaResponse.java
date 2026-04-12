@@ -25,10 +25,17 @@ public class RecaptchaResponse {
      * @return true si la validación es exitosa
      */
     public boolean isValid(double minScore, String expectedAction) {
-        return this.success && 
-               this.score >= minScore && 
-               this.action != null && 
-               this.action.equals(expectedAction);
+        return this.success
+                && this.score >= minScore
+                && this.action != null
+                && normalizeAction(this.action).equals(normalizeAction(expectedAction));
+    }
+
+    private String normalizeAction(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().toLowerCase().replace("_", "").replace("-", "");
     }
 }
 

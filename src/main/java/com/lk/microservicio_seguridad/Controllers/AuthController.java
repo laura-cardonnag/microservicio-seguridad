@@ -168,7 +168,6 @@ public class AuthController {
         }
     }
 
-<<<<<<< HEAD
     @PostMapping("/oauth-login")
     public ResponseEntity<?> oauthLogin(@RequestBody OAuthLoginRequest request) {
         logger.info("🔐 OAuth login request recibido");
@@ -206,7 +205,7 @@ public class AuthController {
             String token = jwtService.generateToken(user);
             logger.info("✅ JWT token generado exitosamente");
 
-            // Crear respuesta con token y información del usuario
+            // Crear respuesta con token e información del usuario
             OAuthLoginResponse response = new OAuthLoginResponse(
                     token,
                     user.getId(),
@@ -230,13 +229,20 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
         try {
+            String maskedEmail = maskEmail(request != null ? request.getEmail() : null);
+            logger.info("[FORGOT-PASSWORD] Solicitud recibida. email={}, recaptchaToken={}",
+                    maskedEmail,
+                    request != null && request.getRecaptchaToken() != null && !request.getRecaptchaToken().isEmpty() ? "presente" : "ausente");
+
             // Validar campos requeridos
             if (request.getEmail() == null || request.getEmail().isEmpty()) {
+                logger.warn("[FORGOT-PASSWORD] Email ausente en solicitud");
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Email es requerido"));
             }
             
             if (request.getRecaptchaToken() == null || request.getRecaptchaToken().isEmpty()) {
+                logger.warn("[FORGOT-PASSWORD] reCAPTCHA token ausente para email={}", maskedEmail);
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "reCAPTCHA token es requerido"));
             }
@@ -246,21 +252,34 @@ public class AuthController {
                 request.getRecaptchaToken(), 
                 "forgot_password"
             );
-            
-            if (!recaptchaResponse.isSuccess()) {
+
+            logger.info("[FORGOT-PASSWORD] Resultado reCAPTCHA. email={}, success={}, score={}, action={}, errors={}",
+                    maskedEmail,
+                    recaptchaResponse.isSuccess(),
+                    recaptchaResponse.getScore(),
+                    recaptchaResponse.getAction(),
+                    recaptchaResponse.getErrorCodes());
+
+            if (!recaptchaResponse.isValid(recaptchaService.getMinScore(), "forgot_password")) {
+                logger.warn("[FORGOT-PASSWORD] reCAPTCHA inválido por success/score/action. email={}, minScore={}",
+                        maskedEmail,
+                        recaptchaService.getMinScore());
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "reCAPTCHA inválido. Por favor, intenta de nuevo."));
             }
             
             // Iniciar proceso de reset
+            logger.info("[FORGOT-PASSWORD] reCAPTCHA válido. Iniciando proceso de envío de correo para email={}", maskedEmail);
             authService.initiatePasswordReset(request.getEmail());
-            
+            logger.info("[FORGOT-PASSWORD] Proceso de recuperación ejecutado (respuesta genérica) para email={}", maskedEmail);
+
             // RESPUESTA GENÉRICA (por seguridad, siempre igual)
             return ResponseEntity.ok(Map.of(
                 "message", "Si el email existe en nuestros registros, recibirá instrucciones de recuperación en su bandeja de entrada."
             ));
             
         } catch (Exception e) {
+            logger.error("[FORGOT-PASSWORD] Error controlado en solicitud de recuperación. Se devuelve mensaje genérico", e);
             // Respuesta genérica incluso en caso de error (por seguridad)
             return ResponseEntity.ok(Map.of(
                 "message", "Si el email existe en nuestros registros, recibirá instrucciones de recuperación en su bandeja de entrada."
@@ -313,8 +332,7 @@ public class AuthController {
                     .body(Map.of("error", "Error interno al procesar el reset de contraseña"));
         }
     }
-}
-=======
+
     @PostMapping("/verify-2fa")
     public ResponseEntity<Map<String, Object>> verify2FA(@RequestBody Map<String, String> request) {
         logger.info("Solicitud de verificación 2FA para sesión: {}", request.get("sessionId"));
@@ -537,4 +555,3 @@ public class AuthController {
     }
 }
 
->>>>>>> 549373e121605a17e1741d934e80db6d9f26f80d
