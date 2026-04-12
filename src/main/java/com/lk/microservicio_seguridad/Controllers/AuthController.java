@@ -21,6 +21,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Date;
 
@@ -196,6 +198,8 @@ public class AuthController {
 
             logger.info("✅ Campos validados correctamente");
 
+            String photoUrl = resolveOAuthPhotoUrl(request);
+
             // Procesar OAuth login
             User user = authService.oauthLogin(request.getEmail(), request.getName(), request.getProvider());
             logger.info("✨ Usuario procesado: {} (ID: {})", user.getEmail(), user.getId());
@@ -211,7 +215,7 @@ public class AuthController {
                     user.getId(),
                     user.getEmail(),
                     user.getName(),
-                    request.getPhotoUrl() // Solo retornar el photoUrl del request, no de BD
+                    photoUrl // Solo para proveedores OAuth permitidos y sin persistencia en BD
             );
 
             logger.info("✨ OAuth login exitoso para: {} (Provider: {})", 
@@ -552,6 +556,71 @@ public class AuthController {
 
         String visible = username.substring(0, Math.min(3, username.length()));
         return visible + "***@***." + (domain.contains(".") ? domain.substring(domain.lastIndexOf('.') + 1) : domain);
+    }
+
+    private String resolveOAuthPhotoUrl(OAuthLoginRequest request) {
+        if (request == null || request.getProvider() == null) {
+            return null;
+        }
+
+        String provider = request.getProvider().toLowerCase();
+        if (!"google".equals(provider) && !"microsoft".equals(provider) && !"github".equals(provider)) {
+            logger.warn("⚠️ OAuth provider no soportado para foto de perfil: {}", request.getProvider());
+            return null;
+        }
+
+        String rawPhotoUrl = request.getPhotoUrl();
+        if (rawPhotoUrl == null || rawPhotoUrl.isBlank()) {
+            logger.info("ℹ️ OAuth {} sin foto de perfil en request para email={}", provider, request.getEmail());
+            return null;
+        }
+
+        if (!isValidPhotoUrlForProvider(rawPhotoUrl, provider)) {
+            logger.warn("⚠️ photoUrl inválida para OAuth {}. Se omite foto para email={}", provider, request.getEmail());
+            return null;
+        }
+
+        logger.info("🖼️ Foto de perfil de {} aceptada para email={}", provider, request.getEmail());
+        return rawPhotoUrl;
+    }
+
+    private boolean isValidPhotoUrlForProvider(String photoUrl, String provider) {
+        try {
+            URI uri = new URI(photoUrl);
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+
+            if (!"https".equalsIgnoreCase(scheme) || host == null || host.isBlank()) {
+                return false;
+            }
+
+            String lowerHost = host.toLowerCase();
+            String[] allowedDomains;
+
+            switch (provider) {
+                case "google":
+                    allowedDomains = new String[]{"googleusercontent.com", "google.com"};
+                    break;
+                case "microsoft":
+                    allowedDomains = new String[]{"microsoft.com", "live.com", "graph.microsoft.com"};
+                    break;
+                case "github":
+                    allowedDomains = new String[]{"githubusercontent.com", "github.com"};
+                    break;
+                default:
+                    return false;
+            }
+
+            for (String allowedDomain : allowedDomains) {
+                if (lowerHost.equals(allowedDomain) || lowerHost.endsWith("." + allowedDomain)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (URISyntaxException ex) {
+            logger.warn("⚠️ Formato de photoUrl inválido", ex);
+            return false;
+        }
     }
 }
 
