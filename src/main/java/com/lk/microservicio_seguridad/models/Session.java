@@ -15,17 +15,19 @@ public class Session {
     private String token;
     private Date expiration;
     private String code2FA;
+    private Integer failedAttempts = 0;
 
     //Base no relacional
     @DBRef
     private User user;
 
     public Session(){
-
+        this.failedAttempts = 0;
     }
     public Session(String token, Date expiration, String code2FA) {
         this.token = token;
         this.expiration = expiration;
         this.code2FA = code2FA;
+        this.failedAttempts = 0;
     }
 }

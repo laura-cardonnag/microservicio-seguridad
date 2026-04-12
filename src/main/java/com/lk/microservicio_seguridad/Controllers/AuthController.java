@@ -28,6 +28,8 @@ import java.util.Date;
 @RequestMapping("/api/public/auth")
 public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    private static final int MAX_2FA_ATTEMPTS = 3;
+    private static final long TWO_FA_EXPIRATION_MS = 10 * 60 * 1000L;
 
     private final AuthService authService;
     private final JwtService jwtService;
@@ -67,8 +69,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, String>> login(@RequestBody LoginRequest request) {
-        logger.info("Request recibido: email={}, password={}, recaptchaToken={}", 
+    public ResponseEntity<Map<String, Object>> login(@RequestBody LoginRequest request) {
+        logger.info("Request recibido: email={}, password={}, recaptchaToken={}",
                     request.getEmail(), 
                     request.getPassword() != null ? "presente" : "null", 
                     request.getRecaptchaToken() != null ? "presente" : "null");
@@ -124,7 +126,7 @@ public class AuthController {
             String generatedCode = randomCodeService.generateCode();
             tempSession.setCode2FA(generatedCode);
             tempSession.setUser(user);
-            tempSession.setExpiration(new Date(System.currentTimeMillis() + 600000)); // 10 minutos para verificar
+            tempSession.setExpiration(new Date(System.currentTimeMillis() + TWO_FA_EXPIRATION_MS)); // 10 minutos para verificar
 
             logger.info("📋 [CÓDIGO GENERADO] - Usuario: {} | Código: '{}' | Longitud: {}",
                 user.getEmail(), generatedCode, generatedCode.length());
@@ -149,11 +151,16 @@ public class AuthController {
                 user.getEmail(), savedSession.getCode2FA(), savedSession.getId());
             logger.info("✓ Aguardando verificación 2FA para: {}", user.getEmail());
 
+            String maskedEmail = maskEmail(user.getEmail());
+
             // Retornar solo el sessionId, sin JWT
             return ResponseEntity.ok(Map.of(
                 "success", "true",
                 "message", "Código de verificación enviado a tu correo",
-                "sessionId", savedSession.getId()
+                "sessionId", savedSession.getId(),
+                "maskedEmail", maskedEmail,
+                "expiresAt", String.valueOf(savedSession.getExpiration().getTime()),
+                "attemptsRemaining", String.valueOf(MAX_2FA_ATTEMPTS)
             ));
         } catch (Exception e) {
             logger.error("✗ Error en login para usuario: {}", request.getEmail(), e);
@@ -309,7 +316,7 @@ public class AuthController {
 }
 =======
     @PostMapping("/verify-2fa")
-    public ResponseEntity<Map<String, String>> verify2FA(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Map<String, Object>> verify2FA(@RequestBody Map<String, String> request) {
         logger.info("Solicitud de verificación 2FA para sesión: {}", request.get("sessionId"));
 
         String sessionId = request.get("sessionId");
@@ -383,9 +390,23 @@ public class AuthController {
                     sessionId, tempSession.getCode2FA(), code2FA);
                 logger.error("❌ [VERIFICACIÓN FALLIDA] - SessionID: {} | Usuario: {} | Código correcto: '{}' | Código ingresado: '{}'",
                     sessionId, tempSession.getUser().getEmail(), tempSession.getCode2FA(), code2FA);
+                Session updatedSession = sessionService.incrementFailedAttempts(sessionId);
+                int attempts = updatedSession != null && updatedSession.getFailedAttempts() != null ? updatedSession.getFailedAttempts() : 0;
+                int remainingAttempts = Math.max(0, MAX_2FA_ATTEMPTS - attempts);
+
+                if (attempts >= MAX_2FA_ATTEMPTS) {
+                    sessionService.delete(sessionId);
+                    return ResponseEntity.status(401).body(Map.of(
+                        "success", "false",
+                        "message", "Código incorrecto. Intentos agotados. Vuelve a iniciar sesión.",
+                        "attemptsRemaining", 0
+                    ));
+                }
+
                 return ResponseEntity.status(401).body(Map.of(
                     "success", "false",
-                    "message", "Código de verificación incorrecto"
+                    "message", "Código incorrecto. Intentos restantes: " + remainingAttempts,
+                    "attemptsRemaining", remainingAttempts
                 ));
             }
 
@@ -400,8 +421,9 @@ public class AuthController {
             // PASO 2: Actualizar la sesión con el token JWT
             tempSession.setToken(token);
             tempSession.setExpiration(new Date(System.currentTimeMillis() + jwtExpiration));
+            tempSession.setFailedAttempts(0);
 
-            Session finalSession = sessionService.update(sessionId, tempSession);
+            sessionService.update(sessionId, tempSession);
             logger.info("✓ Sesión actualizada con token JWT para: {}", tempSession.getUser().getEmail());
 
             // Código verificado exitosamente
@@ -421,6 +443,97 @@ public class AuthController {
                 "message", "Error interno al verificar el código"
             ));
         }
+    }
+
+    @PostMapping("/resend-2fa")
+    public ResponseEntity<Map<String, Object>> resend2FA(@RequestBody Map<String, String> request) {
+        String sessionId = request.get("sessionId");
+
+        if (sessionId == null || sessionId.isEmpty()) {
+            return ResponseEntity.status(400).body(Map.of(
+                "success", "false",
+                "message", "sessionId es requerido"
+            ));
+        }
+
+        Session session = sessionService.findById(sessionId);
+        if (session == null) {
+            return ResponseEntity.status(404).body(Map.of(
+                "success", "false",
+                "message", "Sesión no encontrada o expirada"
+            ));
+        }
+
+        if (session.getExpiration() != null && session.getExpiration().before(new Date())) {
+            sessionService.delete(sessionId);
+            return ResponseEntity.status(401).body(Map.of(
+                "success", "false",
+                "message", "Código inválido o expirado. Inténtalo nuevamente."
+            ));
+        }
+
+        String newCode = randomCodeService.generateCode();
+        Date newExpiration = new Date(System.currentTimeMillis() + TWO_FA_EXPIRATION_MS);
+        Session updated = sessionService.reset2FA(sessionId, newCode, newExpiration);
+
+        if (updated == null) {
+            return ResponseEntity.status(404).body(Map.of(
+                "success", "false",
+                "message", "Sesión no encontrada o expirada"
+            ));
+        }
+
+        boolean codeSent = notificationService.sendVerificationCode(updated.getUser(), newCode);
+        if (!codeSent) {
+            return ResponseEntity.status(500).body(Map.of(
+                "success", "false",
+                "message", "No se pudo reenviar el código"
+            ));
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "success", "true",
+            "message", "Código reenviado",
+            "sessionId", updated.getId(),
+            "maskedEmail", maskEmail(updated.getUser().getEmail()),
+            "expiresAt", String.valueOf(newExpiration.getTime()),
+            "attemptsRemaining", String.valueOf(MAX_2FA_ATTEMPTS)
+        ));
+    }
+
+    @PostMapping("/cancel-2fa")
+    public ResponseEntity<Map<String, Object>> cancel2FA(@RequestBody Map<String, String> request) {
+        String sessionId = request.get("sessionId");
+
+        if (sessionId == null || sessionId.isEmpty()) {
+            return ResponseEntity.status(400).body(Map.of(
+                "success", "false",
+                "message", "sessionId es requerido"
+            ));
+        }
+
+        sessionService.delete(sessionId);
+        return ResponseEntity.ok(Map.of(
+            "success", "true",
+            "message", "Sesión 2FA invalidada"
+        ));
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return email;
+        }
+
+        String[] parts = email.split("@", 2);
+        String username = parts[0];
+        String domain = parts[1];
+
+        if (username.length() <= 2) {
+            return "**@" + domain;
+        }
+
+        String visible = username.substring(0, Math.min(3, username.length()));
+        return visible + "***@***." + (domain.contains(".") ? domain.substring(domain.lastIndexOf('.') + 1) : domain);
     }
 }
 
