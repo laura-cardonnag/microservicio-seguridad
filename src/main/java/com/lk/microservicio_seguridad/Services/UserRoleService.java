@@ -13,6 +13,8 @@ import java.util.List;
 
 @Service
 public class UserRoleService {
+    public static final String DEFAULT_CITIZEN_ROLE_ID = "6a03bdbded5eb46c745c65ae";
+
     @Autowired
     private UserRepository theUserRepository;
 
@@ -26,13 +28,23 @@ public class UserRoleService {
                                String roleId) {
         User user = this.theUserRepository.findById(userId).orElse(null);
         Role role = this.theRoleRepository.findById(roleId).orElse(null);
-        if (user != null && role != null) {
-            UserRole theUserRole = new UserRole(user, role);
-            this.theUserRoleRepository.save(theUserRole);
-            return true;
-        } else {
+        if (user == null || role == null) {
             return false;
         }
+
+        boolean alreadyAssigned = this.theUserRoleRepository.findByUserId(userId).stream()
+                .anyMatch(userRole -> userRole.getRole() != null && roleId.equals(userRole.getRole().getId()));
+        if (alreadyAssigned) {
+            return true;
+        }
+
+        UserRole theUserRole = new UserRole(user, role);
+        this.theUserRoleRepository.save(theUserRole);
+        return true;
+    }
+
+    public boolean addCitizenRoleToUser(String userId) {
+        return addUserRole(userId, DEFAULT_CITIZEN_ROLE_ID);
     }
 
     public boolean removeUserRole(String userRoleId) {

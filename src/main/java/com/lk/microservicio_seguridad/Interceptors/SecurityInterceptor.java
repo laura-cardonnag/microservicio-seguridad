@@ -24,7 +24,6 @@ public class SecurityInterceptor implements HandlerInterceptor {
 
         logger.info("SecurityInterceptor ejecutándose para: {}", request.getRequestURI());
 
-        // 🔥 SOLUCIÓN CLAVE
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             logger.info("Petición OPTIONS permitida (CORS preflight)");
             response.setStatus(HttpServletResponse.SC_OK);

@@ -25,6 +25,9 @@ public class UserService {
     @Autowired
     private SessionRepository theSessionRepository;
 
+    @Autowired
+    private UserRoleService theUserRoleService;
+
     public List<User> find(){
         //Le dice al repositorio q aplique el método findAll (lo hace el padre)
         return this.theUserRepository.findAll();
@@ -32,13 +35,27 @@ public class UserService {
 
     public User findById(String id){
         //Se le dice al repositorio que busque este elemento por tal id y si no existe que devuelva nulo
-        User theUser=this.theUserRepository.findById(id).orElse(null);
-        return theUser;
+        return this.theUserRepository.findById(id).orElse(null);
     }
 
     public User create(User newUser){
         //Le digo al repo el método save. Save se controla de 2 formas: si no existe en la base de datos lo crea y si ya existe lo actualiza
-        return this.theUserRepository.save(newUser);
+        User savedUser = this.theUserRepository.save(newUser);
+
+        boolean citizenRoleAssigned;
+        try {
+            citizenRoleAssigned = this.theUserRoleService.addCitizenRoleToUser(savedUser.getId());
+        } catch (RuntimeException ex) {
+            this.theUserRepository.delete(savedUser);
+            throw ex;
+        }
+
+        if (!citizenRoleAssigned) {
+            this.theUserRepository.delete(savedUser);
+            throw new IllegalStateException("No se pudo asignar el rol ciudadano al nuevo usuario");
+        }
+
+        return savedUser;
     }
 
     //Recibe identificador e info que se quiere cambiar
@@ -97,9 +114,9 @@ public class UserService {
     /**
      * Permite asociar un usuario y una sesión. Para que funcione ambos
      * ya deben de existir en la base de datos
-     * @param userId
-     * @param sessionId
-     * @return
+     * @param userId identificador del usuario
+     * @param sessionId identificador de la sesión
+     * @return true si la asociación se realizó correctamente
      */
     public boolean addSession(String userId,String sessionId){
         User theUser=this.theUserRepository.findById(userId).orElse(null);

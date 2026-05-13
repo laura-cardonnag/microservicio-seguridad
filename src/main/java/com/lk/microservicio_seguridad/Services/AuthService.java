@@ -21,15 +21,18 @@ public class AuthService {
     private final PasswordResetTokenRepository resetTokenRepository;
     private final EncryptionService encryptionService;
     private final NotificationServiceClient notificationServiceClient;
+    private final UserRoleService userRoleService;
 
     public AuthService(UserRepository userRepository, 
                       PasswordResetTokenRepository resetTokenRepository,
                       EncryptionService encryptionService,
-                      NotificationServiceClient notificationServiceClient) {
+                      NotificationServiceClient notificationServiceClient,
+                      UserRoleService userRoleService) {
         this.userRepository = userRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.encryptionService = encryptionService;
         this.notificationServiceClient = notificationServiceClient;
+        this.userRoleService = userRoleService;
     }
 
     /**
@@ -60,6 +63,22 @@ public class AuthService {
         
         // Guardar en BD
         User savedUser = userRepository.save(user);
+
+        boolean citizenRoleAssigned;
+        try {
+            citizenRoleAssigned = userRoleService.addCitizenRoleToUser(savedUser.getId());
+        } catch (RuntimeException ex) {
+            userRepository.delete(savedUser);
+            logger.error("❌ Error inesperado al asignar el rol ciudadano al usuario recién registrado: {}", email, ex);
+            throw ex;
+        }
+
+        if (!citizenRoleAssigned) {
+            userRepository.delete(savedUser);
+            logger.error("❌ No se pudo asignar el rol ciudadano al usuario recién registrado: {}", email);
+            throw new IllegalStateException("No se pudo asignar el rol ciudadano al nuevo usuario");
+        }
+
         logger.info("✅ Usuario registrado exitosamente: {}", email);
         
         return savedUser;
@@ -134,6 +153,22 @@ public class AuthService {
         
         // Guardar en BD
         User savedUser = userRepository.save(newUser);
+
+        boolean oauthCitizenRoleAssigned;
+        try {
+            oauthCitizenRoleAssigned = userRoleService.addCitizenRoleToUser(savedUser.getId());
+        } catch (RuntimeException ex) {
+            userRepository.delete(savedUser);
+            logger.error("❌ Error inesperado al asignar el rol ciudadano al usuario OAuth recién creado: {}", email, ex);
+            throw ex;
+        }
+
+        if (!oauthCitizenRoleAssigned) {
+            userRepository.delete(savedUser);
+            logger.error("❌ No se pudo asignar el rol ciudadano al usuario OAuth recién creado: {}", email);
+            throw new IllegalStateException("No se pudo asignar el rol ciudadano al nuevo usuario");
+        }
+
         logger.info("✅ Nuevo usuario OAuth creado: {} (Provider: {})", email, provider);
         
         return savedUser;

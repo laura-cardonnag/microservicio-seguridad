@@ -1,7 +1,9 @@
 package com.lk.microservicio_seguridad.Controllers;
 
+import com.lk.microservicio_seguridad.models.Permission;
 import com.lk.microservicio_seguridad.models.User;
 import com.lk.microservicio_seguridad.Services.SecurityService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -31,4 +33,11 @@ public class SecurityController {
         }
         return theResponse;
     }
+    @PostMapping("permissions-validation")
+    public boolean permissionsValidation(final HttpServletRequest request,
+                                         @RequestBody Permission thePermission) {
+        return this.theSecurityService.permissionsValidation(request,thePermission);
+    }
+
+
 }

@@ -1,7 +1,9 @@
 package com.lk.microservicio_seguridad.Services;
 
+import com.lk.microservicio_seguridad.models.Permission;
 import com.lk.microservicio_seguridad.models.User;
 import com.lk.microservicio_seguridad.Repositories.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +16,8 @@ public class SecurityService {
     private EncryptionService theEncryptionService;
     @Autowired
     private JwtService theJwtService;
+    @Autowired
+    private ValidatorsService theValidatorsService;
 
     public String login(User theNewUser){
         String token=null;
@@ -27,12 +31,13 @@ public class SecurityService {
             return  token;
         }
     }
-    /*
     public boolean permissionsValidation(final HttpServletRequest request,
-                                         @RequestBody Permission thePermission) {
+                                         Permission thePermission) {
         boolean success=this.theValidatorsService.validationRolePermission(request,thePermission.getUrl(),thePermission.getMethod());
         return success;
     }
-    */
+
+
+
 
 }
