@@ -126,6 +126,7 @@ public class AuthController {
             // PASO 1: Crear sesión temporal (sin token JWT) con código 2FA
             Session tempSession = new Session();
             String generatedCode = randomCodeService.generateCode();
+
             tempSession.setCode2FA(generatedCode);
             tempSession.setUser(user);
             tempSession.setExpiration(new Date(System.currentTimeMillis() + TWO_FA_EXPIRATION_MS)); // 10 minutos para verificar
